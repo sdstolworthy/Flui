@@ -103,7 +103,12 @@ fn create_authenticated_http_client(api_key: &str) -> reqwest::Client {
 fn get_config() -> Result<Config, ConfigurationError> {
     let args = CliArgs::parse();
     println!("args: {args:?}");
-    Config::from_options(args.flight_number, args.api_key, args.refresh_interval, args.alert_threshold_minutes)
+    Config::from_options(
+        args.flight_number,
+        args.api_key,
+        args.refresh_interval,
+        args.alert_threshold_minutes,
+    )
 }
 
 /// Select the most relevant flight from a list of flights
@@ -227,7 +232,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     loop {
         // Check if we're approaching landing
         let is_alert = current_view_model.is_approaching_landing(config.alert_threshold_minutes);
-        
+
         // Trigger terminal bell/flash on first alert
         if is_alert && !alert_triggered {
             // Ring the terminal bell
@@ -236,7 +241,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         } else if !is_alert {
             alert_triggered = false;
         }
-        
+
         // Draw the UI
         terminal.draw(|frame| {
             ui::render_flight_status(frame, &current_view_model, is_alert);
