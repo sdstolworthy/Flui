@@ -89,12 +89,37 @@ fn get_config() -> Result<Config, ConfigurationError> {
     Config::from_options(args.flight_number, args.api_key)
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let config = get_config().unwrap();
     let http_client = create_authenticated_http_client(&config.flight_aware_api_key);
-    let _client = create_flightaware_client(http_client, None);
+    let client = create_flightaware_client(http_client, None);
 
-    println!("Tracking flight: {}", config.flight_number);
+    let flight_status = client
+        .get_flight(&config.flight_number, None, None, None, None, None)
+        .await;
+
+    let flight_view_model = match flight_status {
+        Ok(response) => {
+            if let Some(flight) = response.flights.first() {
+                FlightStatusViewModel::from(flight)
+            } else {
+                println!("{response:#?}");
+                println!("No flight data found for {}", config.flight_number);
+                return;
+            }
+        }
+        Err(e) => {
+            println!("Error fetching flight data: {}", e);
+            return;
+        }
+    };
+
+    println!(
+        "Tracking flight: {}. Status: {}",
+        config.flight_number, flight_view_model.status
+    );
+    println!("Flight View Model: {flight_view_model:#?}");
     println!("FlightAware API client initialized");
 
     // In the future, we'll use the client to fetch flight data
