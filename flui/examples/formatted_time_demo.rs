@@ -22,7 +22,10 @@ fn main() {
     println!("Status: {}", flight.status);
     println!();
     println!("Raw arrival time:       {:?}", flight.arrival_time());
-    println!("Formatted arrival time: {:?}", flight.formatted_arrival_time());
+    println!(
+        "Formatted arrival time: {:?}",
+        flight.formatted_arrival_time()
+    );
     println!();
     println!("The formatted time is converted to your system's local timezone");
     println!("and displayed in a human-readable format!");

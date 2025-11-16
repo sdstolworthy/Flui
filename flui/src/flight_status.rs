@@ -104,7 +104,7 @@ impl FlightStatusViewModel {
         let now = Utc::now();
 
         let duration = arrival_time.signed_duration_since(now);
-        
+
         if duration.num_seconds() < 0 {
             return Some("Arrived".to_string());
         }
@@ -434,11 +434,11 @@ mod tests {
 
     #[test]
     fn test_is_approaching_landing_true() {
-        use chrono::{Utc, Duration};
-        
+        use chrono::{Duration, Utc};
+
         // Flight arriving in 20 minutes
         let arrival_time = Utc::now() + Duration::minutes(20);
-        
+
         let view_model = FlightStatusViewModel {
             flight_number: "AA100".to_string(),
             status: FlightStatus::EnRoute,
@@ -459,11 +459,11 @@ mod tests {
 
     #[test]
     fn test_is_approaching_landing_false_too_far() {
-        use chrono::{Utc, Duration};
-        
+        use chrono::{Duration, Utc};
+
         // Flight arriving in 45 minutes
         let arrival_time = Utc::now() + Duration::minutes(45);
-        
+
         let view_model = FlightStatusViewModel {
             flight_number: "AA100".to_string(),
             status: FlightStatus::EnRoute,

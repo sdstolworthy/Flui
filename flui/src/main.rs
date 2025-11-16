@@ -3,7 +3,7 @@ use flightaware::Client;
 use std::fmt;
 
 mod flight_status;
-use flight_status::{FlightStatusViewModel, FlightStatusViewModelBuilder};
+use flight_status::FlightStatusViewModel;
 
 mod api_converter;
 mod ui;

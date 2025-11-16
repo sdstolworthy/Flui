@@ -1,14 +1,14 @@
 // Demonstration of progress info with time remaining
 
+use chrono::{Duration, Utc};
 use flui::{FlightStatus, FlightStatusViewModel};
-use chrono::{Utc, Duration};
 
 fn main() {
     println!("\n=== Flight Progress Info Demo ===\n");
-    
+
     // Create a flight that arrives in 2.5 hours
     let arrival_time = Utc::now() + Duration::hours(2) + Duration::minutes(30);
-    
+
     let flight = FlightStatusViewModel {
         flight_number: "AA100".to_string(),
         status: FlightStatus::EnRoute,
@@ -22,21 +22,25 @@ fn main() {
         origin_airport: Some("NRT".to_string()),
         destination_airport: Some("HND".to_string()),
     };
-    
+
     println!("Flight: {}", flight.flight_number);
     println!("Progress: {:.0}%", flight.progress_percentage());
-    println!("Time Remaining: {}", flight.time_remaining().unwrap_or("N/A".to_string()));
+    println!(
+        "Time Remaining: {}",
+        flight.time_remaining().unwrap_or("N/A".to_string())
+    );
     println!();
-    
+
     // Simulate the progress info display
     let width: usize = 60;
-    let info_text = format!("{:.0}% • {}", 
-        flight.progress_percentage(), 
+    let info_text = format!(
+        "{:.0}% • {}",
+        flight.progress_percentage(),
         flight.time_remaining().unwrap_or("N/A".to_string())
     );
     let padding = (width.saturating_sub(info_text.len())) / 2;
     println!("{:padding$}{}", "", info_text, padding = padding);
-    
+
     // Test with arrived flight
     println!("\n--- Arrived Flight ---");
     let arrived_flight = FlightStatusViewModel {
@@ -52,7 +56,10 @@ fn main() {
         origin_airport: Some("SFO".to_string()),
         destination_airport: Some("LAX".to_string()),
     };
-    
+
     println!("Progress: {:.0}%", arrived_flight.progress_percentage());
-    println!("Time Remaining: {}", arrived_flight.time_remaining().unwrap_or("N/A".to_string()));
+    println!(
+        "Time Remaining: {}",
+        arrived_flight.time_remaining().unwrap_or("N/A".to_string())
+    );
 }

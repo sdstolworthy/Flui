@@ -4,16 +4,18 @@ use chrono::{DateTime, Utc};
 impl From<&flightaware::types::BaseFlight> for FlightStatusViewModel {
     fn from(flight: &flightaware::types::BaseFlight) -> Self {
         let status = determine_flight_status_base(flight);
-        
+
         // Extract airport codes (prefer IATA, fallback to ICAO)
-        let origin_airport = flight.origin.as_ref().and_then(|o| {
-            o.code_iata.clone().or_else(|| o.code_icao.clone())
-        });
-        
-        let destination_airport = flight.destination.as_ref().and_then(|d| {
-            d.code_iata.clone().or_else(|| d.code_icao.clone())
-        });
-        
+        let origin_airport = flight
+            .origin
+            .as_ref()
+            .and_then(|o| o.code_iata.clone().or_else(|| o.code_icao.clone()));
+
+        let destination_airport = flight
+            .destination
+            .as_ref()
+            .and_then(|d| d.code_iata.clone().or_else(|| d.code_icao.clone()));
+
         FlightStatusViewModel {
             flight_number: flight.ident.clone(),
             status,
@@ -34,16 +36,18 @@ impl From<&flightaware::types::BaseFlight> for FlightStatusViewModel {
 impl From<&flightaware::types::GetFlightResponseFlightsItem> for FlightStatusViewModel {
     fn from(flight: &flightaware::types::GetFlightResponseFlightsItem) -> Self {
         let status = determine_flight_status_response_item(flight);
-        
+
         // Extract airport codes (prefer IATA, fallback to ICAO)
-        let origin_airport = flight.origin.as_ref().and_then(|o| {
-            o.code_iata.clone().or_else(|| o.code_icao.clone())
-        });
-        
-        let destination_airport = flight.destination.as_ref().and_then(|d| {
-            d.code_iata.clone().or_else(|| d.code_icao.clone())
-        });
-        
+        let origin_airport = flight
+            .origin
+            .as_ref()
+            .and_then(|o| o.code_iata.clone().or_else(|| o.code_icao.clone()));
+
+        let destination_airport = flight
+            .destination
+            .as_ref()
+            .and_then(|d| d.code_iata.clone().or_else(|| d.code_icao.clone()));
+
         FlightStatusViewModel {
             flight_number: flight.ident.clone(),
             status,
@@ -68,43 +72,49 @@ fn determine_flight_status_base(flight: &flightaware::types::BaseFlight) -> Flig
     if flight.cancelled {
         return FlightStatus::Cancelled;
     }
-    
+
     if flight.actual_off.is_some() && flight.actual_on.is_none() {
         return FlightStatus::EnRoute;
     }
-    
+
     if let Some(delay) = flight.departure_delay
-        && delay > 0 {
-            return FlightStatus::Delayed;
-        }
-    
+        && delay > 0
+    {
+        return FlightStatus::Delayed;
+    }
+
     if let Some(delay) = flight.arrival_delay
-        && delay > 0 {
-            return FlightStatus::Delayed;
-        }
-    
+        && delay > 0
+    {
+        return FlightStatus::Delayed;
+    }
+
     FlightStatus::OnTime
 }
 
-fn determine_flight_status_response_item(flight: &flightaware::types::GetFlightResponseFlightsItem) -> FlightStatus {
+fn determine_flight_status_response_item(
+    flight: &flightaware::types::GetFlightResponseFlightsItem,
+) -> FlightStatus {
     if flight.cancelled {
         return FlightStatus::Cancelled;
     }
-    
+
     if flight.actual_off.is_some() && flight.actual_on.is_none() {
         return FlightStatus::EnRoute;
     }
-    
+
     if let Some(delay) = flight.departure_delay
-        && delay > 0 {
-            return FlightStatus::Delayed;
-        }
-    
+        && delay > 0
+    {
+        return FlightStatus::Delayed;
+    }
+
     if let Some(delay) = flight.arrival_delay
-        && delay > 0 {
-            return FlightStatus::Delayed;
-        }
-    
+        && delay > 0
+    {
+        return FlightStatus::Delayed;
+    }
+
     FlightStatus::OnTime
 }
 
@@ -117,12 +127,12 @@ pub fn determine_flight_status(flight: &flightaware::types::BaseFlight) -> Fligh
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_from_conversion() {
-        use flightaware::types::{BaseFlight, BaseFlightType};
         use chrono::TimeZone;
-        
+        use flightaware::types::{BaseFlight, BaseFlightType};
+
         let flight = BaseFlight {
             ident: "AA100".to_string(),
             ident_iata: None,
@@ -177,38 +187,38 @@ mod tests {
             actual_runway_off: None,
             actual_runway_on: None,
         };
-        
+
         // Test using From trait
         let view_model = FlightStatusViewModel::from(&flight);
         assert_eq!(view_model.flight_number, "AA100");
         assert_eq!(view_model.status, FlightStatus::OnTime);
-        
+
         // Test using into()
         let view_model2: FlightStatusViewModel = (&flight).into();
         assert_eq!(view_model2.flight_number, "AA100");
     }
-    
+
     #[test]
     fn test_datetime_to_string_conversion() {
         use chrono::TimeZone;
-        
+
         let dt = Utc.with_ymd_and_hms(2025, 11, 16, 10, 0, 0).unwrap();
         let result = datetime_to_string(Some(&dt));
-        
+
         assert!(result.is_some());
         assert!(result.unwrap().contains("2025-11-16T10:00:00"));
     }
-    
+
     #[test]
     fn test_datetime_to_string_none() {
         let result = datetime_to_string(None);
         assert!(result.is_none());
     }
-    
+
     #[test]
     fn test_status_determination_cancelled() {
         use flightaware::types::{BaseFlight, BaseFlightType};
-        
+
         let flight = BaseFlight {
             ident: "AA100".to_string(),
             ident_iata: None,
@@ -225,7 +235,7 @@ mod tests {
             codeshares_iata: None,
             blocked: false,
             diverted: false,
-            cancelled: true,  // Cancelled
+            cancelled: true, // Cancelled
             position_only: false,
             origin: None,
             destination: None,
@@ -263,14 +273,14 @@ mod tests {
             actual_runway_off: None,
             actual_runway_on: None,
         };
-        
+
         assert_eq!(determine_flight_status(&flight), FlightStatus::Cancelled);
     }
-    
+
     #[test]
     fn test_status_determination_delayed() {
         use flightaware::types::{BaseFlight, BaseFlightType};
-        
+
         let flight = BaseFlight {
             ident: "AA100".to_string(),
             ident_iata: None,
@@ -291,7 +301,7 @@ mod tests {
             position_only: false,
             origin: None,
             destination: None,
-            departure_delay: Some(900),  // 15 minutes delay
+            departure_delay: Some(900), // 15 minutes delay
             arrival_delay: Some(0),
             filed_ete: None,
             scheduled_out: None,
@@ -325,7 +335,7 @@ mod tests {
             actual_runway_off: None,
             actual_runway_on: None,
         };
-        
+
         assert_eq!(determine_flight_status(&flight), FlightStatus::Delayed);
     }
 }

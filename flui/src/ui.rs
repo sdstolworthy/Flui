@@ -1,22 +1,28 @@
 use crate::flight_status::FlightStatusViewModel;
 use ratatui::{
+    Frame,
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
-    Frame,
 };
 
-pub fn render_flight_status(frame: &mut Frame, view_model: &FlightStatusViewModel, alert_mode: bool) {
+pub fn render_flight_status(
+    frame: &mut Frame,
+    view_model: &FlightStatusViewModel,
+    alert_mode: bool,
+) {
     let area = frame.area();
-    
+
     // Alert styling - use blinking red border when approaching landing
     let alert_style = if alert_mode {
-        Style::default().fg(Color::Red).add_modifier(Modifier::BOLD | Modifier::RAPID_BLINK)
+        Style::default()
+            .fg(Color::Red)
+            .add_modifier(Modifier::BOLD | Modifier::RAPID_BLINK)
     } else {
         Style::default()
     };
-    
+
     // Create layout with 4 rows for our 4 elements
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -28,7 +34,7 @@ pub fn render_flight_status(frame: &mut Frame, view_model: &FlightStatusViewMode
             Constraint::Length(6), // Flight path progress bar (taller for airports + info + path)
         ])
         .split(area);
-    
+
     // Flight Number - add alert styling
     let flight_number_text = if alert_mode {
         format!("Flight: {} ⚠️  LANDING SOON ⚠️", view_model.flight_number)
@@ -36,14 +42,21 @@ pub fn render_flight_status(frame: &mut Frame, view_model: &FlightStatusViewMode
         format!("Flight: {}", view_model.flight_number)
     };
     let flight_number = Paragraph::new(flight_number_text)
-        .block(Block::default().borders(Borders::ALL).title("Flight Information").border_style(alert_style))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Flight Information")
+                .border_style(alert_style),
+        )
         .style(if alert_mode {
             Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)
         } else {
-            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD)
         });
     frame.render_widget(flight_number, chunks[0]);
-    
+
     // Flight Status
     let status_color = match view_model.status {
         crate::flight_status::FlightStatus::OnTime => Color::Green,
@@ -51,102 +64,138 @@ pub fn render_flight_status(frame: &mut Frame, view_model: &FlightStatusViewMode
         crate::flight_status::FlightStatus::Cancelled => Color::Red,
         crate::flight_status::FlightStatus::EnRoute => Color::Blue,
     };
-    
+
     let status_text = format!("Status: {}", view_model.status);
     let status = Paragraph::new(status_text)
-        .block(Block::default().borders(Borders::ALL).border_style(alert_style))
-        .style(Style::default().fg(status_color).add_modifier(Modifier::BOLD));
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(alert_style),
+        )
+        .style(
+            Style::default()
+                .fg(status_color)
+                .add_modifier(Modifier::BOLD),
+        );
     frame.render_widget(status, chunks[1]);
-    
+
     // Estimated Arrival Time
     let arrival_time = view_model
         .formatted_arrival_time()
         .unwrap_or_else(|| "N/A".to_string());
     let arrival_text = format!("Estimated Arrival: {}", arrival_time);
     let arrival = Paragraph::new(arrival_text)
-        .block(Block::default().borders(Borders::ALL).border_style(alert_style))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(alert_style),
+        )
         .style(Style::default().fg(Color::White));
     frame.render_widget(arrival, chunks[2]);
-    
+
     // Flight Path Progress Bar
     render_flight_path(frame, chunks[3], view_model, alert_mode);
 }
 
-fn render_flight_path(frame: &mut Frame, area: ratatui::layout::Rect, view_model: &FlightStatusViewModel, alert_mode: bool) {
+fn render_flight_path(
+    frame: &mut Frame,
+    area: ratatui::layout::Rect,
+    view_model: &FlightStatusViewModel,
+    alert_mode: bool,
+) {
     let progress = view_model.progress_percentage();
-    
+
     // Get airport codes, default to "???" if not available
     let origin = view_model.origin_airport.as_deref().unwrap_or("???");
     let destination = view_model.destination_airport.as_deref().unwrap_or("???");
-    
+
     // Calculate available width for the path (subtract borders and padding)
     let available_width = area.width.saturating_sub(4) as usize; // 2 for borders, 2 for padding
-    
+
     // Build the flight path visualization
     let mut lines = vec![];
-    
+
     // Line 1: Airport codes
-    let airport_line = format!("{:<width$}{:>width$}", 
-        origin, 
+    let airport_line = format!(
+        "{:<width$}{:>width$}",
+        origin,
         destination,
         width = available_width / 2
     );
-    lines.push(Line::from(Span::styled(airport_line, Style::default().fg(Color::White))));
-    
+    lines.push(Line::from(Span::styled(
+        airport_line,
+        Style::default().fg(Color::White),
+    )));
+
     // Line 2: Progress info centered (percent and time remaining)
     let progress_info = build_progress_info(view_model, available_width);
     lines.push(progress_info);
-    
+
     // Line 3: The flight path with airplane
     let path = build_flight_path(available_width, progress);
     lines.push(path);
-    
+
     let alert_style = if alert_mode {
-        Style::default().fg(Color::Red).add_modifier(Modifier::BOLD | Modifier::RAPID_BLINK)
+        Style::default()
+            .fg(Color::Red)
+            .add_modifier(Modifier::BOLD | Modifier::RAPID_BLINK)
     } else {
         Style::default()
     };
-    
+
     let title = if alert_mode {
         "⚠️  Flight Progress - LANDING SOON  ⚠️"
     } else {
         "Flight Progress"
     };
-    
+
     let paragraph = Paragraph::new(lines)
-        .block(Block::default().borders(Borders::ALL).title(title).border_style(alert_style))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(title)
+                .border_style(alert_style),
+        )
         .alignment(Alignment::Left);
-    
+
     frame.render_widget(paragraph, area);
 }
 
 fn build_progress_info(view_model: &FlightStatusViewModel, width: usize) -> Line<'static> {
     let progress = view_model.progress_percentage();
-    let time_remaining = view_model.time_remaining().unwrap_or_else(|| "N/A".to_string());
-    
+    let time_remaining = view_model
+        .time_remaining()
+        .unwrap_or_else(|| "N/A".to_string());
+
     let info_text = format!("{:.0}% • {}", progress, time_remaining);
     let padding = (width.saturating_sub(info_text.len())) / 2;
-    
+
     let centered_text = format!("{:padding$}{}", "", info_text, padding = padding);
-    
-    Line::from(Span::styled(centered_text, Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)))
+
+    Line::from(Span::styled(
+        centered_text,
+        Style::default()
+            .fg(Color::Cyan)
+            .add_modifier(Modifier::BOLD),
+    ))
 }
 
 fn build_flight_path(width: usize, progress: f64) -> Line<'static> {
     if width < 10 {
         return Line::from("");
     }
-    
+
     // Calculate airplane position (0-100% maps to start-end of path)
     let progress_clamped = progress.clamp(0.0, 100.0);
     let path_width = width.saturating_sub(2); // Leave room for dots at each end
-    let airplane_pos = ((path_width as f64 * progress_clamped / 100.0).round() as usize).min(path_width.saturating_sub(1));
-    
+    let airplane_pos = ((path_width as f64 * progress_clamped / 100.0).round() as usize)
+        .min(path_width.saturating_sub(1));
+
     let mut spans = vec![];
-    
+
     // Origin dot
     spans.push(Span::styled("●", Style::default().fg(Color::White)));
-    
+
     // Build the path
     for i in 0..path_width {
         if i == airplane_pos {
@@ -160,10 +209,10 @@ fn build_flight_path(width: usize, progress: f64) -> Line<'static> {
             spans.push(Span::styled("─", Style::default().fg(Color::DarkGray)));
         }
     }
-    
+
     // Destination dot
     spans.push(Span::styled("●", Style::default().fg(Color::White)));
-    
+
     Line::from(spans)
 }
 
@@ -200,7 +249,7 @@ fn calculate_progress(view_model: &FlightStatusViewModel) -> f64 {
 mod tests {
     use super::*;
     use crate::flight_status::FlightStatus;
-    
+
     #[test]
     fn test_calculate_progress_scheduled() {
         let vm = FlightStatusViewModel {
@@ -216,10 +265,10 @@ mod tests {
             origin_airport: None,
             destination_airport: None,
         };
-        
+
         assert_eq!(calculate_progress(&vm), 0.0);
     }
-    
+
     #[test]
     fn test_calculate_progress_enroute() {
         let vm = FlightStatusViewModel {
@@ -235,10 +284,10 @@ mod tests {
             origin_airport: None,
             destination_airport: None,
         };
-        
+
         assert_eq!(calculate_progress(&vm), 50.0);
     }
-    
+
     #[test]
     fn test_calculate_progress_completed() {
         let vm = FlightStatusViewModel {
@@ -254,7 +303,7 @@ mod tests {
             origin_airport: None,
             destination_airport: None,
         };
-        
+
         assert_eq!(calculate_progress(&vm), 100.0);
     }
 }
