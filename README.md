@@ -1,13 +1,21 @@
 # Flight UI (flui)
 
-A terminal-based flight tracking application using the FlightAware AeroAPI.
+A terminal-based flight tracking application using the FlightAware AeroAPI with a beautiful TUI.
 
 ## Features
 
-- Track flight status in real-time
-- View flight schedules, delays, and current status
+- **Real-time flight tracking** with FlightAware AeroAPI
+- **Terminal UI** displaying:
+  - Flight number
+  - Current status (On Time, Delayed, Cancelled, En Route)
+  - Estimated arrival time
+  - Flight progress bar
 - Clean separation between API layer and view models
 - Mock server support for development
+
+## Usage
+
+The TUI will display flight information in a clean terminal interface. Press `q` or `ESC` to exit.
 
 ## Development
 
@@ -23,6 +31,7 @@ This will:
 - Start a local HTTP mock server
 - Return sample flight data for any flight query
 - Allow you to test the application without a real API key
+- Display the TUI with sample data
 
 ### Running with Real API
 
@@ -56,19 +65,31 @@ cargo test --lib
 
 # Integration tests
 cargo test --test flight_api_test
+
+# UI module tests
+cargo test ui::tests
 ```
 
 ## Architecture
 
-- **flui** - Main application with CLI and view models
+- **flui** - Main application with CLI, view models, and TUI
 - **flightaware** - Generated SDK from FlightAware OpenAPI specification
 
 ### Key Components
 
 - `flight_status.rs` - View model for flight status display
 - `api_converter.rs` - Converts API responses to view models using `From` trait
+- `ui.rs` - Terminal UI rendering with ratatui
 - `mock_server.rs` - Optional mock HTTP server for development
 - `main.rs` - CLI application entry point
+
+### UI Features
+
+The terminal UI uses [ratatui](https://ratatui.rs/) to provide:
+- Color-coded status indicators (Green=OnTime, Yellow=Delayed, Red=Cancelled, Blue=EnRoute)
+- Progress bar showing flight completion percentage
+- Clean bordered layout with clear information hierarchy
+- Responsive design that adapts to terminal size
 
 ## Configuration
 

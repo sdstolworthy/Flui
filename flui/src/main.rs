@@ -6,6 +6,7 @@ mod flight_status;
 use flight_status::{FlightStatus, FlightStatusViewModel};
 
 mod api_converter;
+mod ui;
 
 #[cfg(feature = "httpmock")]
 mod mock_server;
@@ -93,7 +94,7 @@ fn get_config() -> Result<Config, ConfigurationError> {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = get_config().unwrap();
 
     // Start mock server if httpmock feature is enabled
@@ -124,24 +125,46 @@ async fn main() {
             } else {
                 println!("{response:#?}");
                 println!("No flight data found for {}", config.flight_number);
-                return;
+                return Ok(());
             }
         }
         Err(e) => {
             println!("Error fetching flight data: {}", e);
-            return;
+            return Ok(());
         }
     };
 
-    println!(
-        "Tracking flight: {}. Status: {}",
-        config.flight_number, flight_view_model.status
-    );
-    println!("Flight View Model: {flight_view_model:#?}");
-    println!("FlightAware API client initialized");
-
-    // In the future, we'll use the client to fetch flight data
-    // For now, just show that we have the SDK integrated
+    // Setup terminal
+    crossterm::terminal::enable_raw_mode()?;
+    let mut stdout = std::io::stdout();
+    crossterm::execute!(stdout, crossterm::terminal::EnterAlternateScreen)?;
+    
+    let backend = ratatui::backend::CrosstermBackend::new(stdout);
+    let mut terminal = ratatui::Terminal::new(backend)?;
+    
+    // Draw the UI
+    terminal.draw(|frame| {
+        ui::render_flight_status(frame, &flight_view_model);
+    })?;
+    
+    // Wait for user input before exiting (press 'q' or ESC to quit)
+    use crossterm::event::{self, Event, KeyCode};
+    loop {
+        if let Event::Key(key) = event::read()? {
+            if key.code == KeyCode::Char('q') || key.code == KeyCode::Esc {
+                break;
+            }
+        }
+    }
+    
+    // Restore terminal
+    crossterm::terminal::disable_raw_mode()?;
+    crossterm::execute!(
+        terminal.backend_mut(),
+        crossterm::terminal::LeaveAlternateScreen
+    )?;
+    
+    Ok(())
 }
 
 #[cfg(test)]
