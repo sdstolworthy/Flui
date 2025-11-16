@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "flui",
+    "flightaware",
+]
+resolver = "2"
