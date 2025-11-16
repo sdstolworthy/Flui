@@ -14,6 +14,7 @@ impl From<&flightaware::types::BaseFlight> for FlightStatusViewModel {
             estimated_arrival: datetime_to_string(flight.estimated_on.as_ref()),
             actual_departure: datetime_to_string(flight.actual_off.as_ref()),
             actual_arrival: datetime_to_string(flight.actual_on.as_ref()),
+            progress_percent: flight.progress_percent,
         }
     }
 }
@@ -32,6 +33,7 @@ impl From<&flightaware::types::GetFlightResponseFlightsItem> for FlightStatusVie
             estimated_arrival: datetime_to_string(flight.estimated_on.as_ref()),
             actual_departure: datetime_to_string(flight.actual_off.as_ref()),
             actual_arrival: datetime_to_string(flight.actual_on.as_ref()),
+            progress_percent: flight.progress_percent,
         }
     }
 }

@@ -54,9 +54,7 @@ pub fn render_flight_status(frame: &mut Frame, view_model: &FlightStatusViewMode
     frame.render_widget(arrival, chunks[2]);
     
     // Progress Bar
-    // For now, we'll use a placeholder progress (0-100)
-    // In the future, we can calculate based on actual flight progress
-    let progress = calculate_progress(view_model);
+    let progress = view_model.progress_percentage();
     let progress_label = format!("{:.0}% Complete", progress);
     
     let gauge = Gauge::default()
@@ -67,6 +65,9 @@ pub fn render_flight_status(frame: &mut Frame, view_model: &FlightStatusViewMode
     frame.render_widget(gauge, chunks[3]);
 }
 
+// Keep the old calculate_progress function for backwards compatibility in tests
+// but it's no longer used in the UI
+#[allow(dead_code)]
 fn calculate_progress(view_model: &FlightStatusViewModel) -> f64 {
     // For now, return a default based on status
     // In the future, we can calculate based on actual/estimated times and distance
@@ -109,6 +110,7 @@ mod tests {
             estimated_arrival: Some("2025-11-16T14:00:00Z".to_string()),
             actual_departure: None,
             actual_arrival: None,
+            progress_percent: Some(0),
         };
         
         assert_eq!(calculate_progress(&vm), 0.0);
@@ -125,6 +127,7 @@ mod tests {
             estimated_arrival: Some("2025-11-16T14:00:00Z".to_string()),
             actual_departure: Some("2025-11-16T10:05:00Z".to_string()),
             actual_arrival: None,
+            progress_percent: Some(0),
         };
         
         assert_eq!(calculate_progress(&vm), 50.0);
@@ -141,6 +144,7 @@ mod tests {
             estimated_arrival: Some("2025-11-16T14:00:00Z".to_string()),
             actual_departure: Some("2025-11-16T10:05:00Z".to_string()),
             actual_arrival: Some("2025-11-16T14:10:00Z".to_string()),
+            progress_percent: Some(100),
         };
         
         assert_eq!(calculate_progress(&vm), 100.0);

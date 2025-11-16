@@ -29,6 +29,7 @@ pub struct FlightStatusViewModel {
     pub estimated_arrival: Option<String>,
     pub actual_departure: Option<String>,
     pub actual_arrival: Option<String>,
+    pub progress_percent: Option<i64>,
 }
 
 impl FlightStatusViewModel {
@@ -42,6 +43,12 @@ impl FlightStatusViewModel {
         self.actual_arrival
             .as_deref()
             .or(self.estimated_arrival.as_deref())
+    }
+    
+    pub fn progress_percentage(&self) -> f64 {
+        self.progress_percent
+            .map(|p| p as f64)
+            .unwrap_or(0.0)
     }
 }
 
@@ -68,6 +75,7 @@ mod tests {
             estimated_arrival: Some("14:20".to_string()),
             actual_departure: Some("10:20".to_string()),
             actual_arrival: None,
+            progress_percent: Some(50),
         };
 
         assert_eq!(view_model.departure_time(), Some("10:20"));
@@ -84,6 +92,7 @@ mod tests {
             estimated_arrival: Some("14:20".to_string()),
             actual_departure: None,
             actual_arrival: None,
+            progress_percent: Some(50),
         };
 
         assert_eq!(view_model.departure_time(), Some("10:15"));
@@ -100,6 +109,7 @@ mod tests {
             estimated_arrival: Some("14:20".to_string()),
             actual_departure: Some("10:20".to_string()),
             actual_arrival: Some("14:25".to_string()),
+            progress_percent: Some(100),
         };
 
         assert_eq!(view_model.arrival_time(), Some("14:25"));
@@ -116,6 +126,7 @@ mod tests {
             estimated_arrival: Some("14:20".to_string()),
             actual_departure: None,
             actual_arrival: None,
+            progress_percent: Some(50),
         };
 
         assert_eq!(view_model.arrival_time(), Some("14:20"));
@@ -132,9 +143,44 @@ mod tests {
             estimated_arrival: None,
             actual_departure: None,
             actual_arrival: None,
+            progress_percent: Some(50),
         };
 
         assert_eq!(view_model.departure_time(), None);
         assert_eq!(view_model.arrival_time(), None);
+    }
+    
+    #[test]
+    fn test_progress_percentage_some() {
+        let view_model = FlightStatusViewModel {
+            flight_number: "AA100".to_string(),
+            status: FlightStatus::EnRoute,
+            scheduled_departure: Some("10:00".to_string()),
+            scheduled_arrival: Some("14:00".to_string()),
+            estimated_departure: Some("10:15".to_string()),
+            estimated_arrival: Some("14:20".to_string()),
+            actual_departure: Some("10:20".to_string()),
+            actual_arrival: None,
+            progress_percent: Some(45),
+        };
+        
+        assert_eq!(view_model.progress_percentage(), 45.0);
+    }
+    
+    #[test]
+    fn test_progress_percentage_none() {
+        let view_model = FlightStatusViewModel {
+            flight_number: "AA100".to_string(),
+            status: FlightStatus::Cancelled,
+            scheduled_departure: Some("10:00".to_string()),
+            scheduled_arrival: Some("14:00".to_string()),
+            estimated_departure: None,
+            estimated_arrival: None,
+            actual_departure: None,
+            actual_arrival: None,
+            progress_percent: None,
+        };
+        
+        assert_eq!(view_model.progress_percentage(), 0.0);
     }
 }
