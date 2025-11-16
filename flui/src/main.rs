@@ -7,6 +7,9 @@ use flight_status::{FlightStatus, FlightStatusViewModel};
 
 mod api_converter;
 
+#[cfg(feature = "httpmock")]
+mod mock_server;
+
 #[derive(Debug)]
 pub enum ConfigurationError {
     MissingFlightNumber,
@@ -92,8 +95,23 @@ fn get_config() -> Result<Config, ConfigurationError> {
 #[tokio::main]
 async fn main() {
     let config = get_config().unwrap();
+
+    // Start mock server if httpmock feature is enabled
+    #[cfg(feature = "httpmock")]
+    let (_mock_base_url, _mock_server) = {
+        let (base_url, server) = mock_server::start_mock_server();
+        (base_url.clone(), server)
+    };
+
+    // Use mock server URL if available, otherwise use production
+    #[cfg(feature = "httpmock")]
+    let base_url = Some(_mock_base_url.as_str());
+
+    #[cfg(not(feature = "httpmock"))]
+    let base_url: Option<&str> = None;
+
     let http_client = create_authenticated_http_client(&config.flight_aware_api_key);
-    let client = create_flightaware_client(http_client, None);
+    let client = create_flightaware_client(http_client, base_url);
 
     let flight_status = client
         .get_flight(&config.flight_number, None, None, None, None, None)
