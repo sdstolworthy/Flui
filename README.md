@@ -2,21 +2,47 @@
 
 A terminal-based flight tracking application using the FlightAware AeroAPI with a beautiful TUI.
 
+**Perfect for monitoring your flight while programming!** Get visual alerts when your flight is approaching landing so you never miss your boarding call.
+
 ## Features
 
 - **Real-time flight tracking** with FlightAware AeroAPI
+- **Landing alerts** - Visual notifications when flight is approaching landing:
+  - 🔔 Terminal bell on first alert
+  - ⚠️ Red blinking borders 
+  - Bold "LANDING SOON" warnings
+  - Configurable threshold (default: 30 minutes)
 - **Terminal UI** displaying:
   - Flight number
   - Current status (On Time, Delayed, Cancelled, En Route)
   - Estimated arrival time (converted to local timezone)
-  - Flight progress bar
+  - Progress percentage and time remaining
+  - Animated flight path with airplane icon
+  - Origin and destination airports
 - **Intelligent flight selection** - automatically selects the most relevant flight when multiple flights share the same flight number
 - Clean separation between API layer and view models
 - Mock server support for development
 
 ## Usage
 
-The TUI will display flight information in a clean terminal interface and automatically refresh every 5 seconds (configurable). Press `q` or `ESC` to exit.
+The TUI will display flight information in a clean terminal interface and automatically refresh every 3 minutes (configurable). Press `q` or `ESC` to exit.
+
+### Configuration Options
+
+All configuration can be set via command line flags or environment variables:
+
+| Flag | Environment Variable | Default | Description |
+|------|---------------------|---------|-------------|
+| `--flight-number` | `FLIGHT_NUMBER` | (required) | Flight number to track (e.g., AA100) |
+| `--api-key` | `FLIGHTAWARE_API_KEY` | (required) | Your FlightAware API key |
+| `--refresh-interval` | `REFRESH_INTERVAL` | 180 | Seconds between API updates |
+| `--alert-threshold-minutes` | `ALERT_THRESHOLD_MINUTES` | 30 | Minutes before landing to trigger alerts |
+
+Example with custom alert threshold (alert 15 minutes before landing):
+
+```bash
+cargo run -- --flight-number AA100 --api-key YOUR_KEY --alert-threshold-minutes 15
+```
 
 ## Development
 

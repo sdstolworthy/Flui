@@ -118,6 +118,32 @@ impl FlightStatusViewModel {
             Some(format!("{}m", minutes))
         }
     }
+
+    /// Check if the flight is approaching landing (within threshold minutes)
+    pub fn is_approaching_landing(&self, threshold_minutes: i64) -> bool {
+        use chrono::{DateTime, Utc};
+
+        // Already landed
+        if self.actual_arrival.is_some() {
+            return false;
+        }
+
+        let arrival_str = match self.estimated_arrival.as_deref() {
+            Some(s) => s,
+            None => return false,
+        };
+
+        let arrival_time: DateTime<Utc> = match arrival_str.parse() {
+            Ok(t) => t,
+            Err(_) => return false,
+        };
+
+        let now = Utc::now();
+        let duration = arrival_time.signed_duration_since(now);
+
+        // Within threshold and not yet arrived
+        duration.num_minutes() > 0 && duration.num_minutes() <= threshold_minutes
+    }
 }
 
 #[cfg(test)]
@@ -404,5 +430,73 @@ mod tests {
         };
 
         assert_eq!(view_model.time_remaining(), None);
+    }
+
+    #[test]
+    fn test_is_approaching_landing_true() {
+        use chrono::{Utc, Duration};
+        
+        // Flight arriving in 20 minutes
+        let arrival_time = Utc::now() + Duration::minutes(20);
+        
+        let view_model = FlightStatusViewModel {
+            flight_number: "AA100".to_string(),
+            status: FlightStatus::EnRoute,
+            scheduled_departure: Some("2025-11-16T10:00:00Z".to_string()),
+            scheduled_arrival: Some(arrival_time.to_rfc3339()),
+            estimated_departure: Some("2025-11-16T10:00:00Z".to_string()),
+            estimated_arrival: Some(arrival_time.to_rfc3339()),
+            actual_departure: Some("2025-11-16T10:05:00Z".to_string()),
+            actual_arrival: None,
+            progress_percent: Some(85),
+            origin_airport: None,
+            destination_airport: None,
+        };
+
+        assert!(view_model.is_approaching_landing(30));
+        assert!(view_model.is_approaching_landing(20));
+    }
+
+    #[test]
+    fn test_is_approaching_landing_false_too_far() {
+        use chrono::{Utc, Duration};
+        
+        // Flight arriving in 45 minutes
+        let arrival_time = Utc::now() + Duration::minutes(45);
+        
+        let view_model = FlightStatusViewModel {
+            flight_number: "AA100".to_string(),
+            status: FlightStatus::EnRoute,
+            scheduled_departure: Some("2025-11-16T10:00:00Z".to_string()),
+            scheduled_arrival: Some(arrival_time.to_rfc3339()),
+            estimated_departure: Some("2025-11-16T10:00:00Z".to_string()),
+            estimated_arrival: Some(arrival_time.to_rfc3339()),
+            actual_departure: Some("2025-11-16T10:05:00Z".to_string()),
+            actual_arrival: None,
+            progress_percent: Some(50),
+            origin_airport: None,
+            destination_airport: None,
+        };
+
+        assert!(!view_model.is_approaching_landing(30));
+    }
+
+    #[test]
+    fn test_is_approaching_landing_false_already_arrived() {
+        let view_model = FlightStatusViewModel {
+            flight_number: "AA100".to_string(),
+            status: FlightStatus::OnTime,
+            scheduled_departure: Some("2025-11-16T10:00:00Z".to_string()),
+            scheduled_arrival: Some("2025-11-16T14:00:00Z".to_string()),
+            estimated_departure: Some("2025-11-16T10:00:00Z".to_string()),
+            estimated_arrival: Some("2025-11-16T14:00:00Z".to_string()),
+            actual_departure: Some("2025-11-16T10:05:00Z".to_string()),
+            actual_arrival: Some("2025-11-16T14:10:00Z".to_string()),
+            progress_percent: Some(100),
+            origin_airport: None,
+            destination_airport: None,
+        };
+
+        assert!(!view_model.is_approaching_landing(30));
     }
 }

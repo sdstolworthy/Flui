@@ -7,8 +7,15 @@ use ratatui::{
     Frame,
 };
 
-pub fn render_flight_status(frame: &mut Frame, view_model: &FlightStatusViewModel) {
+pub fn render_flight_status(frame: &mut Frame, view_model: &FlightStatusViewModel, alert_mode: bool) {
     let area = frame.area();
+    
+    // Alert styling - use blinking red border when approaching landing
+    let alert_style = if alert_mode {
+        Style::default().fg(Color::Red).add_modifier(Modifier::BOLD | Modifier::RAPID_BLINK)
+    } else {
+        Style::default()
+    };
     
     // Create layout with 4 rows for our 4 elements
     let chunks = Layout::default()
@@ -22,11 +29,19 @@ pub fn render_flight_status(frame: &mut Frame, view_model: &FlightStatusViewMode
         ])
         .split(area);
     
-    // Flight Number
-    let flight_number_text = format!("Flight: {}", view_model.flight_number);
+    // Flight Number - add alert styling
+    let flight_number_text = if alert_mode {
+        format!("Flight: {} ⚠️  LANDING SOON ⚠️", view_model.flight_number)
+    } else {
+        format!("Flight: {}", view_model.flight_number)
+    };
     let flight_number = Paragraph::new(flight_number_text)
-        .block(Block::default().borders(Borders::ALL).title("Flight Information"))
-        .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD));
+        .block(Block::default().borders(Borders::ALL).title("Flight Information").border_style(alert_style))
+        .style(if alert_mode {
+            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)
+        });
     frame.render_widget(flight_number, chunks[0]);
     
     // Flight Status
@@ -39,7 +54,7 @@ pub fn render_flight_status(frame: &mut Frame, view_model: &FlightStatusViewMode
     
     let status_text = format!("Status: {}", view_model.status);
     let status = Paragraph::new(status_text)
-        .block(Block::default().borders(Borders::ALL))
+        .block(Block::default().borders(Borders::ALL).border_style(alert_style))
         .style(Style::default().fg(status_color).add_modifier(Modifier::BOLD));
     frame.render_widget(status, chunks[1]);
     
@@ -49,15 +64,15 @@ pub fn render_flight_status(frame: &mut Frame, view_model: &FlightStatusViewMode
         .unwrap_or_else(|| "N/A".to_string());
     let arrival_text = format!("Estimated Arrival: {}", arrival_time);
     let arrival = Paragraph::new(arrival_text)
-        .block(Block::default().borders(Borders::ALL))
+        .block(Block::default().borders(Borders::ALL).border_style(alert_style))
         .style(Style::default().fg(Color::White));
     frame.render_widget(arrival, chunks[2]);
     
     // Flight Path Progress Bar
-    render_flight_path(frame, chunks[3], view_model);
+    render_flight_path(frame, chunks[3], view_model, alert_mode);
 }
 
-fn render_flight_path(frame: &mut Frame, area: ratatui::layout::Rect, view_model: &FlightStatusViewModel) {
+fn render_flight_path(frame: &mut Frame, area: ratatui::layout::Rect, view_model: &FlightStatusViewModel, alert_mode: bool) {
     let progress = view_model.progress_percentage();
     
     // Get airport codes, default to "???" if not available
@@ -86,8 +101,20 @@ fn render_flight_path(frame: &mut Frame, area: ratatui::layout::Rect, view_model
     let path = build_flight_path(available_width, progress);
     lines.push(path);
     
+    let alert_style = if alert_mode {
+        Style::default().fg(Color::Red).add_modifier(Modifier::BOLD | Modifier::RAPID_BLINK)
+    } else {
+        Style::default()
+    };
+    
+    let title = if alert_mode {
+        "⚠️  Flight Progress - LANDING SOON  ⚠️"
+    } else {
+        "Flight Progress"
+    };
+    
     let paragraph = Paragraph::new(lines)
-        .block(Block::default().borders(Borders::ALL).title("Flight Progress"))
+        .block(Block::default().borders(Borders::ALL).title(title).border_style(alert_style))
         .alignment(Alignment::Left);
     
     frame.render_widget(paragraph, area);

@@ -50,6 +50,9 @@ struct CliArgs {
 
     #[clap(long, env = "REFRESH_INTERVAL", default_value = "180")]
     refresh_interval: u64,
+
+    #[clap(long, env = "ALERT_THRESHOLD_MINUTES", default_value = "30")]
+    alert_threshold_minutes: i64,
 }
 
 #[derive(Debug)]
@@ -57,6 +60,7 @@ pub struct Config {
     pub flight_number: String,
     pub flight_aware_api_key: String,
     pub refresh_interval: u64,
+    pub alert_threshold_minutes: i64,
 }
 
 impl Config {
@@ -64,6 +68,7 @@ impl Config {
         flight_number: Option<String>,
         api_key: Option<String>,
         refresh_interval: u64,
+        alert_threshold_minutes: i64,
     ) -> Result<Self, ConfigurationError> {
         let flight_number = flight_number.ok_or(ConfigurationError::MissingFlightNumber)?;
         let flight_aware_api_key = api_key.ok_or(ConfigurationError::MissingApiKey)?;
@@ -72,6 +77,7 @@ impl Config {
             flight_number,
             flight_aware_api_key,
             refresh_interval,
+            alert_threshold_minutes,
         })
     }
 }
@@ -97,7 +103,7 @@ fn create_authenticated_http_client(api_key: &str) -> reqwest::Client {
 fn get_config() -> Result<Config, ConfigurationError> {
     let args = CliArgs::parse();
     println!("args: {args:?}");
-    Config::from_options(args.flight_number, args.api_key, args.refresh_interval)
+    Config::from_options(args.flight_number, args.api_key, args.refresh_interval, args.alert_threshold_minutes)
 }
 
 /// Select the most relevant flight from a list of flights
@@ -214,13 +220,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Current view model
     let mut current_view_model = initial_view_model;
+    let mut alert_triggered = false;
 
     // Event loop
     use crossterm::event::{self, Event, KeyCode};
     loop {
+        // Check if we're approaching landing
+        let is_alert = current_view_model.is_approaching_landing(config.alert_threshold_minutes);
+        
+        // Trigger terminal bell/flash on first alert
+        if is_alert && !alert_triggered {
+            // Ring the terminal bell
+            crossterm::execute!(terminal.backend_mut(), crossterm::style::Print("\x07"))?;
+            alert_triggered = true;
+        } else if !is_alert {
+            alert_triggered = false;
+        }
+        
         // Draw the UI
         terminal.draw(|frame| {
-            ui::render_flight_status(frame, &current_view_model);
+            ui::render_flight_status(frame, &current_view_model, is_alert);
         })?;
 
         // Check for updates or user input (with timeout)
@@ -257,6 +276,7 @@ mod tests {
             Some("AA100".to_string()),
             Some("test-api-key".to_string()),
             5,
+            30,
         );
 
         assert!(result.is_ok());
@@ -264,11 +284,12 @@ mod tests {
         assert_eq!(config.flight_number, "AA100");
         assert_eq!(config.flight_aware_api_key, "test-api-key");
         assert_eq!(config.refresh_interval, 5);
+        assert_eq!(config.alert_threshold_minutes, 30);
     }
 
     #[test]
     fn test_config_from_options_missing_flight_number() {
-        let result = Config::from_options(None, Some("test-api-key".to_string()), 5);
+        let result = Config::from_options(None, Some("test-api-key".to_string()), 5, 30);
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -279,7 +300,7 @@ mod tests {
 
     #[test]
     fn test_config_from_options_missing_api_key() {
-        let result = Config::from_options(Some("AA100".to_string()), None, 5);
+        let result = Config::from_options(Some("AA100".to_string()), None, 5, 30);
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -290,7 +311,7 @@ mod tests {
 
     #[test]
     fn test_config_from_options_missing_both() {
-        let result = Config::from_options(None, None, 5);
+        let result = Config::from_options(None, None, 5, 30);
 
         assert!(result.is_err());
         match result.unwrap_err() {
