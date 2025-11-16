@@ -88,6 +88,36 @@ impl FlightStatusViewModel {
     pub fn progress_percentage(&self) -> f64 {
         self.progress_percent.map(|p| p as f64).unwrap_or(0.0)
     }
+
+    /// Calculate time remaining until arrival
+    /// Returns a formatted string like "2h 30m" or None if unavailable
+    pub fn time_remaining(&self) -> Option<String> {
+        use chrono::{DateTime, Utc};
+
+        // Only calculate if flight hasn't arrived yet
+        if self.actual_arrival.is_some() {
+            return Some("Arrived".to_string());
+        }
+
+        let arrival_str = self.estimated_arrival.as_deref()?;
+        let arrival_time: DateTime<Utc> = arrival_str.parse().ok()?;
+        let now = Utc::now();
+
+        let duration = arrival_time.signed_duration_since(now);
+        
+        if duration.num_seconds() < 0 {
+            return Some("Arrived".to_string());
+        }
+
+        let hours = duration.num_hours();
+        let minutes = (duration.num_minutes() % 60).abs();
+
+        if hours > 0 {
+            Some(format!("{}h {}m", hours, minutes))
+        } else {
+            Some(format!("{}m", minutes))
+        }
+    }
 }
 
 #[cfg(test)]
@@ -336,5 +366,43 @@ mod tests {
         // All Option fields should be None when not set
         assert!(view_model.scheduled_departure.is_none());
         assert!(view_model.scheduled_arrival.is_none());
+    }
+
+    #[test]
+    fn test_time_remaining_arrived() {
+        let view_model = FlightStatusViewModel {
+            flight_number: "AA100".to_string(),
+            status: FlightStatus::OnTime,
+            scheduled_departure: Some("2025-11-16T10:00:00Z".to_string()),
+            scheduled_arrival: Some("2025-11-16T14:00:00Z".to_string()),
+            estimated_departure: Some("2025-11-16T10:00:00Z".to_string()),
+            estimated_arrival: Some("2025-11-16T14:00:00Z".to_string()),
+            actual_departure: Some("2025-11-16T10:05:00Z".to_string()),
+            actual_arrival: Some("2025-11-16T14:10:00Z".to_string()),
+            progress_percent: Some(100),
+            origin_airport: None,
+            destination_airport: None,
+        };
+
+        assert_eq!(view_model.time_remaining(), Some("Arrived".to_string()));
+    }
+
+    #[test]
+    fn test_time_remaining_none() {
+        let view_model = FlightStatusViewModel {
+            flight_number: "AA100".to_string(),
+            status: FlightStatus::OnTime,
+            scheduled_departure: Some("2025-11-16T10:00:00Z".to_string()),
+            scheduled_arrival: Some("2025-11-16T14:00:00Z".to_string()),
+            estimated_departure: Some("2025-11-16T10:00:00Z".to_string()),
+            estimated_arrival: None,
+            actual_departure: None,
+            actual_arrival: None,
+            progress_percent: Some(0),
+            origin_airport: None,
+            destination_airport: None,
+        };
+
+        assert_eq!(view_model.time_remaining(), None);
     }
 }

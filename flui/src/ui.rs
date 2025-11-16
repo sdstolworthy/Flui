@@ -18,7 +18,7 @@ pub fn render_flight_status(frame: &mut Frame, view_model: &FlightStatusViewMode
             Constraint::Length(3), // Flight number
             Constraint::Length(3), // Status
             Constraint::Length(3), // Estimated arrival
-            Constraint::Length(5), // Flight path progress bar (taller for airports + path)
+            Constraint::Length(6), // Flight path progress bar (taller for airports + info + path)
         ])
         .split(area);
     
@@ -78,7 +78,11 @@ fn render_flight_path(frame: &mut Frame, area: ratatui::layout::Rect, view_model
     );
     lines.push(Line::from(Span::styled(airport_line, Style::default().fg(Color::White))));
     
-    // Line 2: The flight path with airplane
+    // Line 2: Progress info centered (percent and time remaining)
+    let progress_info = build_progress_info(view_model, available_width);
+    lines.push(progress_info);
+    
+    // Line 3: The flight path with airplane
     let path = build_flight_path(available_width, progress);
     lines.push(path);
     
@@ -87,6 +91,18 @@ fn render_flight_path(frame: &mut Frame, area: ratatui::layout::Rect, view_model
         .alignment(Alignment::Left);
     
     frame.render_widget(paragraph, area);
+}
+
+fn build_progress_info(view_model: &FlightStatusViewModel, width: usize) -> Line<'static> {
+    let progress = view_model.progress_percentage();
+    let time_remaining = view_model.time_remaining().unwrap_or_else(|| "N/A".to_string());
+    
+    let info_text = format!("{:.0}% • {}", progress, time_remaining);
+    let padding = (width.saturating_sub(info_text.len())) / 2;
+    
+    let centered_text = format!("{:padding$}{}", "", info_text, padding = padding);
+    
+    Line::from(Span::styled(centered_text, Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)))
 }
 
 fn build_flight_path(width: usize, progress: f64) -> Line<'static> {

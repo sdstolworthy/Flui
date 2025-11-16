@@ -42,13 +42,13 @@ impl std::error::Error for ConfigurationError {}
 #[command(name = "flui")]
 #[command(about = "Flight tracker application", long_about = None)]
 struct CliArgs {
-    #[arg(long, env = "FLIGHT_NUMBER")]
+    #[clap(long, env = "FLIGHT_NUMBER")]
     flight_number: Option<String>,
 
-    #[arg(long, env = "FLIGHTAWARE_API_KEY")]
+    #[clap(long, env = "FLIGHTAWARE_API_KEY")]
     api_key: Option<String>,
 
-    #[arg(long, env = "REFRESH_INTERVAL", default_value = "5")]
+    #[clap(long, env = "REFRESH_INTERVAL", default_value = "5")]
     refresh_interval: u64,
 }
 
@@ -96,6 +96,7 @@ fn create_authenticated_http_client(api_key: &str) -> reqwest::Client {
 
 fn get_config() -> Result<Config, ConfigurationError> {
     let args = CliArgs::parse();
+    println!("args: {args:?}");
     Config::from_options(args.flight_number, args.api_key, args.refresh_interval)
 }
 
@@ -184,25 +185,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         interval.tick().await; // Skip first tick (we already have initial data)
 
         loop {
-            for i in 0..11 {
-                interval.tick().await;
+            interval.tick().await;
 
-                let flight_status = client
-                    .get_flight(&flight_number, None, None, None, None, None)
-                    .await;
+            let flight_status = client
+                .get_flight(&flight_number, None, None, None, None, None)
+                .await;
 
-                if let Ok(response) = flight_status
-                    && let Some(flight) = select_relevant_flight(&response.flights) {
-                        let view_model = FlightStatusViewModel::from(flight);
-                        let mut builder = FlightStatusViewModelBuilder::from(view_model);
-                        builder.progress_percent(Some((i * 10) as i64)); // simulate progress
-                        let view_model = builder.build().unwrap();
-                        // change
-                        if tx.send(view_model).await.is_err() {
-                            // Channel closed, exit task
-                            break;
-                        }
-                    }
+            if let Ok(response) = flight_status
+                && let Some(flight) = select_relevant_flight(&response.flights)
+            {
+                let view_model = FlightStatusViewModel::from(flight);
+                // change
+                if tx.send(view_model).await.is_err() {
+                    // Channel closed, exit task
+                    break;
+                }
             }
         }
     });
@@ -229,9 +226,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Check for updates or user input (with timeout)
         if event::poll(std::time::Duration::from_millis(100))?
             && let Event::Key(key) = event::read()?
-                && (key.code == KeyCode::Char('q') || key.code == KeyCode::Esc) {
-                    break;
-                }
+            && (key.code == KeyCode::Char('q') || key.code == KeyCode::Esc)
+        {
+            break;
+        }
 
         // Check for flight updates (non-blocking)
         if let Ok(updated_view_model) = rx.try_recv() {
