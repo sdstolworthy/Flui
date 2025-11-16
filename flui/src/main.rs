@@ -99,15 +99,15 @@ fn select_relevant_flight(
     flights: &[flightaware::types::GetFlightResponseFlightsItem],
 ) -> Option<&flightaware::types::GetFlightResponseFlightsItem> {
     use chrono::{DateTime, Utc};
-    
+
     if flights.is_empty() {
         return None;
     }
-    
+
     // Target time is 2 hours ago from now
     let now = Utc::now();
     let target_time = now - chrono::Duration::hours(2);
-    
+
     // Find the flight with estimated arrival closest to target time
     flights
         .iter()
@@ -171,15 +171,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     crossterm::terminal::enable_raw_mode()?;
     let mut stdout = std::io::stdout();
     crossterm::execute!(stdout, crossterm::terminal::EnterAlternateScreen)?;
-    
+
     let backend = ratatui::backend::CrosstermBackend::new(stdout);
     let mut terminal = ratatui::Terminal::new(backend)?;
-    
+
     // Draw the UI
     terminal.draw(|frame| {
         ui::render_flight_status(frame, &flight_view_model);
     })?;
-    
+
     // Wait for user input before exiting (press 'q' or ESC to quit)
     use crossterm::event::{self, Event, KeyCode};
     loop {
@@ -189,14 +189,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
-    
+
     // Restore terminal
     crossterm::terminal::disable_raw_mode()?;
     crossterm::execute!(
         terminal.backend_mut(),
         crossterm::terminal::LeaveAlternateScreen
     )?;
-    
+
     Ok(())
 }
 
@@ -265,18 +265,18 @@ mod tests {
         assert!(message.contains("--api-key"));
         assert!(message.contains("FLIGHTAWARE_API_KEY"));
     }
-    
+
     #[test]
     fn test_select_relevant_flight_empty() {
         let flights = vec![];
         let result = select_relevant_flight(&flights);
         assert!(result.is_none());
     }
-    
+
     #[test]
     fn test_select_relevant_flight_picks_closest_to_target() {
         use chrono::{TimeZone, Utc};
-        
+
         // Create test JSON with 3 flights with different arrival times
         // We're testing at time 2025-11-16T13:24:30Z (current time)
         // Target time would be 2025-11-16T11:24:30Z (2 hours ago)
@@ -451,25 +451,25 @@ mod tests {
             "links": null,
             "num_pages": 1
         }"#;
-        
-        let response: flightaware::types::GetFlightResponse = 
+
+        let response: flightaware::types::GetFlightResponse =
             serde_json::from_str(json_data).expect("Failed to parse test JSON");
-        
+
         // At current time 2025-11-16T13:24:30Z, target is 11:24:30Z
         // Flight 1 (OLD):     Arrives 10:00:00 - Distance from target: 1h 24m 30s
         // Flight 2 (CURRENT): Arrives 11:30:00 - Distance from target: 5m 30s  ← CLOSEST
         // Flight 3 (FUTURE):  Arrives 16:00:00 - Distance from target: 4h 35m 30s
-        
+
         let selected = select_relevant_flight(&response.flights);
-        
+
         assert!(selected.is_some());
         let flight = selected.unwrap();
-        
+
         // Should select AA100-CURRENT as it's closest to target time (11:24:30)
         assert_eq!(flight.ident, "AA100-CURRENT");
         assert_eq!(flight.fa_flight_id, "AAL100-1234-current");
     }
-    
+
     #[test]
     fn test_select_relevant_flight_fallback_to_first_when_no_estimated_arrival() {
         let json_data = r#"{
@@ -533,12 +533,12 @@ mod tests {
             "links": null,
             "num_pages": 1
         }"#;
-        
-        let response: flightaware::types::GetFlightResponse = 
+
+        let response: flightaware::types::GetFlightResponse =
             serde_json::from_str(json_data).expect("Failed to parse test JSON");
-        
+
         let selected = select_relevant_flight(&response.flights);
-        
+
         assert!(selected.is_some());
         // Should fall back to first flight when none have estimated_on
         assert_eq!(selected.unwrap().ident, "AA100-FIRST");

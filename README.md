@@ -8,8 +8,9 @@ A terminal-based flight tracking application using the FlightAware AeroAPI with 
 - **Terminal UI** displaying:
   - Flight number
   - Current status (On Time, Delayed, Cancelled, En Route)
-  - Estimated arrival time
+  - Estimated arrival time (converted to local timezone)
   - Flight progress bar
+- **Intelligent flight selection** - automatically selects the most relevant flight when multiple flights share the same flight number
 - Clean separation between API layer and view models
 - Mock server support for development
 
@@ -87,9 +88,10 @@ cargo test ui::tests
 
 The terminal UI uses [ratatui](https://ratatui.rs/) to provide:
 - Color-coded status indicators (Green=OnTime, Yellow=Delayed, Red=Cancelled, Blue=EnRoute)
-- Progress bar showing flight completion percentage
+- Progress bar showing flight completion percentage (from FlightAware API)
 - Clean bordered layout with clear information hierarchy
 - Responsive design that adapts to terminal size
+- **Timezone-aware formatting** - arrival times are automatically converted to your local timezone (e.g., "Nov 18, 2025 at 2:30 PM EST")
 
 ## Configuration
 

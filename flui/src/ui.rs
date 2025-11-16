@@ -45,8 +45,8 @@ pub fn render_flight_status(frame: &mut Frame, view_model: &FlightStatusViewMode
     
     // Estimated Arrival Time
     let arrival_time = view_model
-        .arrival_time()
-        .unwrap_or("N/A");
+        .formatted_arrival_time()
+        .unwrap_or_else(|| "N/A".to_string());
     let arrival_text = format!("Estimated Arrival: {}", arrival_time);
     let arrival = Paragraph::new(arrival_text)
         .block(Block::default().borders(Borders::ALL))

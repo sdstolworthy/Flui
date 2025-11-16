@@ -45,6 +45,23 @@ impl FlightStatusViewModel {
             .or(self.estimated_arrival.as_deref())
     }
     
+    /// Format arrival time for display in local timezone
+    /// Returns a human-readable formatted time string
+    pub fn formatted_arrival_time(&self) -> Option<String> {
+        use chrono::{DateTime, Local, Utc};
+        
+        let time_str = self.arrival_time()?;
+        
+        // Parse the ISO 8601 timestamp
+        let utc_time: DateTime<Utc> = time_str.parse().ok()?;
+        
+        // Convert to local timezone
+        let local_time: DateTime<Local> = utc_time.into();
+        
+        // Format as: "Nov 18, 2025 at 2:30 PM EST"
+        Some(local_time.format("%b %-d, %Y at %-I:%M %p %Z").to_string())
+    }
+    
     pub fn progress_percentage(&self) -> f64 {
         self.progress_percent
             .map(|p| p as f64)
@@ -182,5 +199,47 @@ mod tests {
         };
         
         assert_eq!(view_model.progress_percentage(), 0.0);
+    }
+    
+    #[test]
+    fn test_formatted_arrival_time() {
+        let view_model = FlightStatusViewModel {
+            flight_number: "AA100".to_string(),
+            status: FlightStatus::OnTime,
+            scheduled_departure: Some("2025-11-16T10:00:00Z".to_string()),
+            scheduled_arrival: Some("2025-11-16T14:00:00Z".to_string()),
+            estimated_departure: Some("2025-11-16T10:00:00Z".to_string()),
+            estimated_arrival: Some("2025-11-16T14:00:00Z".to_string()),
+            actual_departure: None,
+            actual_arrival: None,
+            progress_percent: Some(0),
+        };
+        
+        let formatted = view_model.formatted_arrival_time();
+        assert!(formatted.is_some());
+        
+        // The formatted string should contain the year
+        let formatted_str = formatted.unwrap();
+        assert!(formatted_str.contains("2025"));
+        
+        // Should contain "at" separator
+        assert!(formatted_str.contains("at"));
+    }
+    
+    #[test]
+    fn test_formatted_arrival_time_none() {
+        let view_model = FlightStatusViewModel {
+            flight_number: "AA100".to_string(),
+            status: FlightStatus::Cancelled,
+            scheduled_departure: None,
+            scheduled_arrival: None,
+            estimated_departure: None,
+            estimated_arrival: None,
+            actual_departure: None,
+            actual_arrival: None,
+            progress_percent: None,
+        };
+        
+        assert!(view_model.formatted_arrival_time().is_none());
     }
 }
