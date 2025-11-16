@@ -101,10 +101,16 @@ cargo test ui::tests
 
 The terminal UI uses [ratatui](https://ratatui.rs/) to provide:
 - Color-coded status indicators (Green=OnTime, Yellow=Delayed, Red=Cancelled, Blue=EnRoute)
-- Progress bar showing flight completion percentage (from FlightAware API)
+- **Animated flight path progress bar** with:
+  - Origin and destination airport codes (IATA/ICAO)
+  - Airplane icon (✈) showing current position
+  - Yellow trail behind the airplane showing distance traveled
+  - Gray path ahead showing remaining distance
+  - Dots marking departure and arrival airports
 - Clean bordered layout with clear information hierarchy
 - Responsive design that adapts to terminal size
 - **Timezone-aware formatting** - arrival times are automatically converted to your local timezone (e.g., "Nov 18, 2025 at 2:30 PM EST")
+- **Auto-refresh** - Flight data updates every 5 seconds (configurable)
 
 ## Configuration
 

@@ -33,6 +33,8 @@ impl From<FlightStatusViewModel> for FlightStatusViewModelBuilder {
         builder.actual_departure(view_model.actual_departure);
         builder.actual_arrival(view_model.actual_arrival);
         builder.progress_percent(view_model.progress_percent);
+        builder.origin_airport(view_model.origin_airport);
+        builder.destination_airport(view_model.destination_airport);
         builder
     }
 }
@@ -49,6 +51,8 @@ pub struct FlightStatusViewModel {
     pub actual_departure: Option<String>,
     pub actual_arrival: Option<String>,
     pub progress_percent: Option<i64>,
+    pub origin_airport: Option<String>,
+    pub destination_airport: Option<String>,
 }
 
 impl FlightStatusViewModel {
@@ -110,6 +114,8 @@ mod tests {
             actual_departure: Some("10:20".to_string()),
             actual_arrival: None,
             progress_percent: Some(50),
+            origin_airport: None,
+            destination_airport: None,
         };
 
         assert_eq!(view_model.departure_time(), Some("10:20"));
@@ -127,6 +133,8 @@ mod tests {
             actual_departure: None,
             actual_arrival: None,
             progress_percent: Some(50),
+            origin_airport: None,
+            destination_airport: None,
         };
 
         assert_eq!(view_model.departure_time(), Some("10:15"));
@@ -144,6 +152,8 @@ mod tests {
             actual_departure: Some("10:20".to_string()),
             actual_arrival: Some("14:25".to_string()),
             progress_percent: Some(100),
+            origin_airport: None,
+            destination_airport: None,
         };
 
         assert_eq!(view_model.arrival_time(), Some("14:25"));
@@ -161,6 +171,8 @@ mod tests {
             actual_departure: None,
             actual_arrival: None,
             progress_percent: Some(50),
+            origin_airport: None,
+            destination_airport: None,
         };
 
         assert_eq!(view_model.arrival_time(), Some("14:20"));
@@ -178,6 +190,8 @@ mod tests {
             actual_departure: None,
             actual_arrival: None,
             progress_percent: Some(50),
+            origin_airport: None,
+            destination_airport: None,
         };
 
         assert_eq!(view_model.departure_time(), None);
@@ -196,6 +210,8 @@ mod tests {
             actual_departure: Some("10:20".to_string()),
             actual_arrival: None,
             progress_percent: Some(45),
+            origin_airport: None,
+            destination_airport: None,
         };
 
         assert_eq!(view_model.progress_percentage(), 45.0);
@@ -213,6 +229,8 @@ mod tests {
             actual_departure: None,
             actual_arrival: None,
             progress_percent: None,
+            origin_airport: None,
+            destination_airport: None,
         };
 
         assert_eq!(view_model.progress_percentage(), 0.0);
@@ -230,6 +248,8 @@ mod tests {
             actual_departure: None,
             actual_arrival: None,
             progress_percent: Some(0),
+            origin_airport: None,
+            destination_airport: None,
         };
 
         let formatted = view_model.formatted_arrival_time();
@@ -255,6 +275,8 @@ mod tests {
             actual_departure: None,
             actual_arrival: None,
             progress_percent: None,
+            origin_airport: None,
+            destination_airport: None,
         };
 
         assert!(view_model.formatted_arrival_time().is_none());

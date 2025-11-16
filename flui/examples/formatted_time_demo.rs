@@ -14,6 +14,8 @@ fn main() {
         actual_departure: Some("2025-11-18T09:42:00Z".to_string()),
         actual_arrival: None,
         progress_percent: Some(45),
+        origin_airport: Some("JFK".to_string()),
+        destination_airport: Some("LAX".to_string()),
     };
 
     println!("Flight: {}", flight.flight_number);

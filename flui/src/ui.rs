@@ -1,8 +1,9 @@
 use crate::flight_status::FlightStatusViewModel;
 use ratatui::{
-    layout::{Constraint, Direction, Layout},
+    layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
-    widgets::{Block, Borders, Gauge, Paragraph},
+    text::{Line, Span},
+    widgets::{Block, Borders, Paragraph},
     Frame,
 };
 
@@ -17,7 +18,7 @@ pub fn render_flight_status(frame: &mut Frame, view_model: &FlightStatusViewMode
             Constraint::Length(3), // Flight number
             Constraint::Length(3), // Status
             Constraint::Length(3), // Estimated arrival
-            Constraint::Length(3), // Progress bar
+            Constraint::Length(5), // Flight path progress bar (taller for airports + path)
         ])
         .split(area);
     
@@ -52,16 +53,75 @@ pub fn render_flight_status(frame: &mut Frame, view_model: &FlightStatusViewMode
         .style(Style::default().fg(Color::White));
     frame.render_widget(arrival, chunks[2]);
     
-    // Progress Bar
+    // Flight Path Progress Bar
+    render_flight_path(frame, chunks[3], view_model);
+}
+
+fn render_flight_path(frame: &mut Frame, area: ratatui::layout::Rect, view_model: &FlightStatusViewModel) {
     let progress = view_model.progress_percentage();
-    let progress_label = format!("{:.0}% Complete", progress);
     
-    let gauge = Gauge::default()
+    // Get airport codes, default to "???" if not available
+    let origin = view_model.origin_airport.as_deref().unwrap_or("???");
+    let destination = view_model.destination_airport.as_deref().unwrap_or("???");
+    
+    // Calculate available width for the path (subtract borders and padding)
+    let available_width = area.width.saturating_sub(4) as usize; // 2 for borders, 2 for padding
+    
+    // Build the flight path visualization
+    let mut lines = vec![];
+    
+    // Line 1: Airport codes
+    let airport_line = format!("{:<width$}{:>width$}", 
+        origin, 
+        destination,
+        width = available_width / 2
+    );
+    lines.push(Line::from(Span::styled(airport_line, Style::default().fg(Color::White))));
+    
+    // Line 2: The flight path with airplane
+    let path = build_flight_path(available_width, progress);
+    lines.push(path);
+    
+    let paragraph = Paragraph::new(lines)
         .block(Block::default().borders(Borders::ALL).title("Flight Progress"))
-        .gauge_style(Style::default().fg(Color::Green).bg(Color::Black))
-        .label(progress_label)
-        .ratio(progress / 100.0);
-    frame.render_widget(gauge, chunks[3]);
+        .alignment(Alignment::Left);
+    
+    frame.render_widget(paragraph, area);
+}
+
+fn build_flight_path(width: usize, progress: f64) -> Line<'static> {
+    if width < 10 {
+        return Line::from("");
+    }
+    
+    // Calculate airplane position (0-100% maps to start-end of path)
+    let progress_clamped = progress.clamp(0.0, 100.0);
+    let path_width = width.saturating_sub(2); // Leave room for dots at each end
+    let airplane_pos = ((path_width as f64 * progress_clamped / 100.0).round() as usize).min(path_width.saturating_sub(1));
+    
+    let mut spans = vec![];
+    
+    // Origin dot
+    spans.push(Span::styled("●", Style::default().fg(Color::White)));
+    
+    // Build the path
+    for i in 0..path_width {
+        if i == airplane_pos {
+            // Airplane emoji or character
+            spans.push(Span::styled("✈", Style::default().fg(Color::Cyan)));
+        } else if i < airplane_pos {
+            // Trail behind the airplane
+            spans.push(Span::styled("─", Style::default().fg(Color::Yellow)));
+        } else {
+            // Empty path ahead
+            spans.push(Span::styled("─", Style::default().fg(Color::DarkGray)));
+        }
+    }
+    
+    // Destination dot
+    spans.push(Span::styled("●", Style::default().fg(Color::White)));
+    
+    Line::from(spans)
 }
 
 // Keep the old calculate_progress function for backwards compatibility in tests
@@ -110,6 +170,8 @@ mod tests {
             actual_departure: None,
             actual_arrival: None,
             progress_percent: Some(0),
+            origin_airport: None,
+            destination_airport: None,
         };
         
         assert_eq!(calculate_progress(&vm), 0.0);
@@ -127,6 +189,8 @@ mod tests {
             actual_departure: Some("2025-11-16T10:05:00Z".to_string()),
             actual_arrival: None,
             progress_percent: Some(0),
+            origin_airport: None,
+            destination_airport: None,
         };
         
         assert_eq!(calculate_progress(&vm), 50.0);
@@ -144,6 +208,8 @@ mod tests {
             actual_departure: Some("2025-11-16T10:05:00Z".to_string()),
             actual_arrival: Some("2025-11-16T14:10:00Z".to_string()),
             progress_percent: Some(100),
+            origin_airport: None,
+            destination_airport: None,
         };
         
         assert_eq!(calculate_progress(&vm), 100.0);

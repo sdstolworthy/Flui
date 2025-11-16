@@ -5,24 +5,14 @@ impl From<&flightaware::types::BaseFlight> for FlightStatusViewModel {
     fn from(flight: &flightaware::types::BaseFlight) -> Self {
         let status = determine_flight_status_base(flight);
         
-        FlightStatusViewModel {
-            flight_number: flight.ident.clone(),
-            status,
-            scheduled_departure: datetime_to_string(flight.scheduled_off.as_ref()),
-            scheduled_arrival: datetime_to_string(flight.scheduled_on.as_ref()),
-            estimated_departure: datetime_to_string(flight.estimated_off.as_ref()),
-            estimated_arrival: datetime_to_string(flight.estimated_on.as_ref()),
-            actual_departure: datetime_to_string(flight.actual_off.as_ref()),
-            actual_arrival: datetime_to_string(flight.actual_on.as_ref()),
-            progress_percent: flight.progress_percent,
-        }
-    }
-}
-
-// Also implement From for GetFlightResponseFlightsItem (which is actually the same as BaseFlight in structure)
-impl From<&flightaware::types::GetFlightResponseFlightsItem> for FlightStatusViewModel {
-    fn from(flight: &flightaware::types::GetFlightResponseFlightsItem) -> Self {
-        let status = determine_flight_status_response_item(flight);
+        // Extract airport codes (prefer IATA, fallback to ICAO)
+        let origin_airport = flight.origin.as_ref().and_then(|o| {
+            o.code_iata.clone().or_else(|| o.code_icao.clone())
+        });
+        
+        let destination_airport = flight.destination.as_ref().and_then(|d| {
+            d.code_iata.clone().or_else(|| d.code_icao.clone())
+        });
         
         FlightStatusViewModel {
             flight_number: flight.ident.clone(),
@@ -34,6 +24,38 @@ impl From<&flightaware::types::GetFlightResponseFlightsItem> for FlightStatusVie
             actual_departure: datetime_to_string(flight.actual_off.as_ref()),
             actual_arrival: datetime_to_string(flight.actual_on.as_ref()),
             progress_percent: flight.progress_percent,
+            origin_airport,
+            destination_airport,
+        }
+    }
+}
+
+// Also implement From for GetFlightResponseFlightsItem (which is actually the same as BaseFlight in structure)
+impl From<&flightaware::types::GetFlightResponseFlightsItem> for FlightStatusViewModel {
+    fn from(flight: &flightaware::types::GetFlightResponseFlightsItem) -> Self {
+        let status = determine_flight_status_response_item(flight);
+        
+        // Extract airport codes (prefer IATA, fallback to ICAO)
+        let origin_airport = flight.origin.as_ref().and_then(|o| {
+            o.code_iata.clone().or_else(|| o.code_icao.clone())
+        });
+        
+        let destination_airport = flight.destination.as_ref().and_then(|d| {
+            d.code_iata.clone().or_else(|| d.code_icao.clone())
+        });
+        
+        FlightStatusViewModel {
+            flight_number: flight.ident.clone(),
+            status,
+            scheduled_departure: datetime_to_string(flight.scheduled_off.as_ref()),
+            scheduled_arrival: datetime_to_string(flight.scheduled_on.as_ref()),
+            estimated_departure: datetime_to_string(flight.estimated_off.as_ref()),
+            estimated_arrival: datetime_to_string(flight.estimated_on.as_ref()),
+            actual_departure: datetime_to_string(flight.actual_off.as_ref()),
+            actual_arrival: datetime_to_string(flight.actual_on.as_ref()),
+            progress_percent: flight.progress_percent,
+            origin_airport,
+            destination_airport,
         }
     }
 }

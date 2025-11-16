@@ -37,6 +37,8 @@ fn main() {
         actual_departure: None,
         actual_arrival: None,
         progress_percent: Some(0),
+        origin_airport: Some("JFK".to_string()),
+        destination_airport: Some("LAX".to_string()),
     };
 
     println!("Flight: {}", flight2.flight_number);
