@@ -2,6 +2,11 @@ use clap::Parser;
 use flightaware::Client;
 use std::fmt;
 
+mod flight_status;
+use flight_status::{FlightStatus, FlightStatusViewModel};
+
+mod api_converter;
+
 #[derive(Debug)]
 pub enum ConfigurationError {
     MissingFlightNumber,
@@ -59,24 +64,24 @@ impl Config {
             flight_aware_api_key,
         })
     }
+}
 
-    pub fn create_client(&self) -> Client {
-        Client::new_with_client(
-            "https://aeroapi.flightaware.com/aeroapi",
-            reqwest::Client::builder()
-                .default_headers({
-                    let mut headers = reqwest::header::HeaderMap::new();
-                    headers.insert(
-                        "x-apikey",
-                        reqwest::header::HeaderValue::from_str(&self.flight_aware_api_key)
-                            .expect("Invalid API key"),
-                    );
-                    headers
-                })
-                .build()
-                .expect("Failed to build HTTP client"),
-        )
-    }
+fn create_flightaware_client(http_client: reqwest::Client, base_url: Option<&str>) -> Client {
+    let url = base_url.unwrap_or("https://aeroapi.flightaware.com/aeroapi");
+    Client::new_with_client(url, http_client)
+}
+
+fn create_authenticated_http_client(api_key: &str) -> reqwest::Client {
+    let mut headers = reqwest::header::HeaderMap::new();
+    headers.insert(
+        "x-apikey",
+        reqwest::header::HeaderValue::from_str(api_key).expect("Invalid API key"),
+    );
+
+    reqwest::Client::builder()
+        .default_headers(headers)
+        .build()
+        .expect("Failed to build HTTP client")
 }
 
 fn get_config() -> Result<Config, ConfigurationError> {
@@ -86,11 +91,12 @@ fn get_config() -> Result<Config, ConfigurationError> {
 
 fn main() {
     let config = get_config().unwrap();
-    let _client = config.create_client();
-    
+    let http_client = create_authenticated_http_client(&config.flight_aware_api_key);
+    let _client = create_flightaware_client(http_client, None);
+
     println!("Tracking flight: {}", config.flight_number);
     println!("FlightAware API client initialized");
-    
+
     // In the future, we'll use the client to fetch flight data
     // For now, just show that we have the SDK integrated
 }
