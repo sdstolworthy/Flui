@@ -16,7 +16,7 @@ A terminal-based flight tracking application using the FlightAware AeroAPI with 
 
 ## Usage
 
-The TUI will display flight information in a clean terminal interface. Press `q` or `ESC` to exit.
+The TUI will display flight information in a clean terminal interface and automatically refresh every 5 seconds (configurable). Press `q` or `ESC` to exit.
 
 ## Development
 
@@ -48,6 +48,19 @@ Or use environment variables:
 export FLIGHT_NUMBER=AA100
 export FLIGHTAWARE_API_KEY=your_key_here
 cargo run
+```
+
+### Configuring Refresh Interval
+
+By default, the application refreshes flight data every 5 seconds. You can customize this:
+
+```bash
+# Refresh every 10 seconds
+cargo run -- --flight-number AA100 --api-key YOUR_KEY --refresh-interval 10
+
+# Or via environment variable
+export REFRESH_INTERVAL=10
+cargo run -- --flight-number AA100 --api-key YOUR_KEY
 ```
 
 ## Testing

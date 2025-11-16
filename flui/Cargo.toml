@@ -7,8 +7,10 @@ edition = "2024"
 chrono = { version = "0.4.42", features = ["serde"] }
 clap = { version = "4.5.51", features = ["derive", "env"] }
 crossterm = "0.29.0"
+derive_builder = "0.20.2"
 flightaware = { version = "0.1.0", path = "../flightaware" }
 httpmock = { version = "0.8.2", optional = true }
+rand = "0.9.2"
 ratatui = "0.29.0"
 regex = { version = "1.12.2", optional = true }
 reqwest = "0.12.24"

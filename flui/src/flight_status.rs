@@ -1,7 +1,9 @@
+use derive_builder::Builder;
 use std::fmt;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum FlightStatus {
+    #[default]
     OnTime,
     Delayed,
     Cancelled,
@@ -19,7 +21,24 @@ impl fmt::Display for FlightStatus {
     }
 }
 
-#[derive(Debug, Clone)]
+impl From<FlightStatusViewModel> for FlightStatusViewModelBuilder {
+    fn from(view_model: FlightStatusViewModel) -> Self {
+        let mut builder = FlightStatusViewModelBuilder::default();
+        builder.flight_number(view_model.flight_number);
+        builder.status(view_model.status);
+        builder.scheduled_departure(view_model.scheduled_departure);
+        builder.scheduled_arrival(view_model.scheduled_arrival);
+        builder.estimated_departure(view_model.estimated_departure);
+        builder.estimated_arrival(view_model.estimated_arrival);
+        builder.actual_departure(view_model.actual_departure);
+        builder.actual_arrival(view_model.actual_arrival);
+        builder.progress_percent(view_model.progress_percent);
+        builder
+    }
+}
+
+#[derive(Debug, Clone, Builder, Default)]
+#[builder(setter(into), default)]
 pub struct FlightStatusViewModel {
     pub flight_number: String,
     pub status: FlightStatus,
@@ -44,28 +63,26 @@ impl FlightStatusViewModel {
             .as_deref()
             .or(self.estimated_arrival.as_deref())
     }
-    
+
     /// Format arrival time for display in local timezone
     /// Returns a human-readable formatted time string
     pub fn formatted_arrival_time(&self) -> Option<String> {
         use chrono::{DateTime, Local, Utc};
-        
+
         let time_str = self.arrival_time()?;
-        
+
         // Parse the ISO 8601 timestamp
         let utc_time: DateTime<Utc> = time_str.parse().ok()?;
-        
+
         // Convert to local timezone
         let local_time: DateTime<Local> = utc_time.into();
-        
+
         // Format as: "Nov 18, 2025 at 2:30 PM EST"
         Some(local_time.format("%b %-d, %Y at %-I:%M %p %Z").to_string())
     }
-    
+
     pub fn progress_percentage(&self) -> f64 {
-        self.progress_percent
-            .map(|p| p as f64)
-            .unwrap_or(0.0)
+        self.progress_percent.map(|p| p as f64).unwrap_or(0.0)
     }
 }
 
@@ -166,7 +183,7 @@ mod tests {
         assert_eq!(view_model.departure_time(), None);
         assert_eq!(view_model.arrival_time(), None);
     }
-    
+
     #[test]
     fn test_progress_percentage_some() {
         let view_model = FlightStatusViewModel {
@@ -180,10 +197,10 @@ mod tests {
             actual_arrival: None,
             progress_percent: Some(45),
         };
-        
+
         assert_eq!(view_model.progress_percentage(), 45.0);
     }
-    
+
     #[test]
     fn test_progress_percentage_none() {
         let view_model = FlightStatusViewModel {
@@ -197,10 +214,10 @@ mod tests {
             actual_arrival: None,
             progress_percent: None,
         };
-        
+
         assert_eq!(view_model.progress_percentage(), 0.0);
     }
-    
+
     #[test]
     fn test_formatted_arrival_time() {
         let view_model = FlightStatusViewModel {
@@ -214,18 +231,18 @@ mod tests {
             actual_arrival: None,
             progress_percent: Some(0),
         };
-        
+
         let formatted = view_model.formatted_arrival_time();
         assert!(formatted.is_some());
-        
+
         // The formatted string should contain the year
         let formatted_str = formatted.unwrap();
         assert!(formatted_str.contains("2025"));
-        
+
         // Should contain "at" separator
         assert!(formatted_str.contains("at"));
     }
-    
+
     #[test]
     fn test_formatted_arrival_time_none() {
         let view_model = FlightStatusViewModel {
@@ -239,7 +256,63 @@ mod tests {
             actual_arrival: None,
             progress_percent: None,
         };
-        
+
         assert!(view_model.formatted_arrival_time().is_none());
+    }
+
+    #[test]
+    fn test_builder_basic() {
+        let view_model = FlightStatusViewModelBuilder::default()
+            .flight_number("AA100")
+            .status(FlightStatus::OnTime)
+            .scheduled_departure(Some("2025-11-16T10:00:00Z".to_string()))
+            .scheduled_arrival(Some("2025-11-16T14:00:00Z".to_string()))
+            .estimated_departure(Some("2025-11-16T10:00:00Z".to_string()))
+            .estimated_arrival(Some("2025-11-16T14:00:00Z".to_string()))
+            .actual_departure(None)
+            .actual_arrival(None)
+            .progress_percent(Some(0))
+            .build()
+            .unwrap();
+
+        assert_eq!(view_model.flight_number, "AA100");
+        assert_eq!(view_model.status, FlightStatus::OnTime);
+        assert_eq!(view_model.progress_percent, Some(0));
+    }
+
+    #[test]
+    fn test_builder_with_none_values() {
+        let view_model = FlightStatusViewModelBuilder::default()
+            .flight_number("DL456")
+            .status(FlightStatus::Cancelled)
+            .scheduled_departure(None)
+            .scheduled_arrival(None)
+            .estimated_departure(None)
+            .estimated_arrival(None)
+            .actual_departure(None)
+            .actual_arrival(None)
+            .progress_percent(None)
+            .build()
+            .unwrap();
+
+        assert_eq!(view_model.flight_number, "DL456");
+        assert_eq!(view_model.status, FlightStatus::Cancelled);
+        assert!(view_model.formatted_arrival_time().is_none());
+    }
+
+    #[test]
+    fn test_builder_with_defaults() {
+        // Builder sets Option fields to None by default, only requires non-Option fields
+        let view_model = FlightStatusViewModelBuilder::default()
+            .flight_number("UA789")
+            .status(FlightStatus::Delayed)
+            .build()
+            .unwrap();
+
+        assert_eq!(view_model.flight_number, "UA789");
+        assert_eq!(view_model.status, FlightStatus::Delayed);
+        // All Option fields should be None when not set
+        assert!(view_model.scheduled_departure.is_none());
+        assert!(view_model.scheduled_arrival.is_none());
     }
 }

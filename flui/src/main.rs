@@ -3,7 +3,7 @@ use flightaware::Client;
 use std::fmt;
 
 mod flight_status;
-use flight_status::{FlightStatus, FlightStatusViewModel};
+use flight_status::{FlightStatus, FlightStatusViewModel, FlightStatusViewModelBuilder};
 
 mod api_converter;
 mod ui;
@@ -47,18 +47,23 @@ struct CliArgs {
 
     #[arg(long, env = "FLIGHTAWARE_API_KEY")]
     api_key: Option<String>,
+
+    #[arg(long, env = "REFRESH_INTERVAL", default_value = "5")]
+    refresh_interval: u64,
 }
 
 #[derive(Debug)]
 pub struct Config {
     pub flight_number: String,
     pub flight_aware_api_key: String,
+    pub refresh_interval: u64,
 }
 
 impl Config {
     pub fn from_options(
         flight_number: Option<String>,
         api_key: Option<String>,
+        refresh_interval: u64,
     ) -> Result<Self, ConfigurationError> {
         let flight_number = flight_number.ok_or(ConfigurationError::MissingFlightNumber)?;
         let flight_aware_api_key = api_key.ok_or(ConfigurationError::MissingApiKey)?;
@@ -66,6 +71,7 @@ impl Config {
         Ok(Config {
             flight_number,
             flight_aware_api_key,
+            refresh_interval,
         })
     }
 }
@@ -90,7 +96,7 @@ fn create_authenticated_http_client(api_key: &str) -> reqwest::Client {
 
 fn get_config() -> Result<Config, ConfigurationError> {
     let args = CliArgs::parse();
-    Config::from_options(args.flight_number, args.api_key)
+    Config::from_options(args.flight_number, args.api_key, args.refresh_interval)
 }
 
 /// Select the most relevant flight from a list of flights
@@ -147,16 +153,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let http_client = create_authenticated_http_client(&config.flight_aware_api_key);
     let client = create_flightaware_client(http_client, base_url);
 
-    let flight_status = client
+    // Fetch initial flight data
+    let initial_flight_status = client
         .get_flight(&config.flight_number, None, None, None, None, None)
         .await;
 
-    let flight_view_model = match flight_status {
+    let initial_view_model = match initial_flight_status {
         Ok(response) => {
             if let Some(flight) = select_relevant_flight(&response.flights) {
                 FlightStatusViewModel::from(flight)
             } else {
-                println!("{response:#?}");
                 println!("No flight data found for {}", config.flight_number);
                 return Ok(());
             }
@@ -167,6 +173,41 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
+    // Create channel for flight updates
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<FlightStatusViewModel>(10);
+
+    // Spawn background task to fetch flight updates
+    let flight_number = config.flight_number.clone();
+    let refresh_interval = config.refresh_interval;
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(refresh_interval));
+        interval.tick().await; // Skip first tick (we already have initial data)
+
+        loop {
+            for i in 0..11 {
+                interval.tick().await;
+
+                let flight_status = client
+                    .get_flight(&flight_number, None, None, None, None, None)
+                    .await;
+
+                if let Ok(response) = flight_status {
+                    if let Some(flight) = select_relevant_flight(&response.flights) {
+                        let view_model = FlightStatusViewModel::from(flight);
+                        let mut builder = FlightStatusViewModelBuilder::from(view_model);
+                        builder.progress_percent(Some((i * 10) as i64)); // simulate progress
+                        let view_model = builder.build().unwrap();
+                        // change
+                        if tx.send(view_model).await.is_err() {
+                            // Channel closed, exit task
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
     // Setup terminal
     crossterm::terminal::enable_raw_mode()?;
     let mut stdout = std::io::stdout();
@@ -175,18 +216,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let backend = ratatui::backend::CrosstermBackend::new(stdout);
     let mut terminal = ratatui::Terminal::new(backend)?;
 
-    // Draw the UI
-    terminal.draw(|frame| {
-        ui::render_flight_status(frame, &flight_view_model);
-    })?;
+    // Current view model
+    let mut current_view_model = initial_view_model;
 
-    // Wait for user input before exiting (press 'q' or ESC to quit)
+    // Event loop
     use crossterm::event::{self, Event, KeyCode};
     loop {
-        if let Event::Key(key) = event::read()? {
-            if key.code == KeyCode::Char('q') || key.code == KeyCode::Esc {
-                break;
+        // Draw the UI
+        terminal.draw(|frame| {
+            ui::render_flight_status(frame, &current_view_model);
+        })?;
+
+        // Check for updates or user input (with timeout)
+        if event::poll(std::time::Duration::from_millis(100))? {
+            if let Event::Key(key) = event::read()? {
+                if key.code == KeyCode::Char('q') || key.code == KeyCode::Esc {
+                    break;
+                }
             }
+        }
+
+        // Check for flight updates (non-blocking)
+        if let Ok(updated_view_model) = rx.try_recv() {
+            current_view_model = updated_view_model;
         }
     }
 
@@ -206,18 +258,22 @@ mod tests {
 
     #[test]
     fn test_config_from_options_with_both_values() {
-        let result =
-            Config::from_options(Some("AA100".to_string()), Some("test-api-key".to_string()));
+        let result = Config::from_options(
+            Some("AA100".to_string()),
+            Some("test-api-key".to_string()),
+            5,
+        );
 
         assert!(result.is_ok());
         let config = result.unwrap();
         assert_eq!(config.flight_number, "AA100");
         assert_eq!(config.flight_aware_api_key, "test-api-key");
+        assert_eq!(config.refresh_interval, 5);
     }
 
     #[test]
     fn test_config_from_options_missing_flight_number() {
-        let result = Config::from_options(None, Some("test-api-key".to_string()));
+        let result = Config::from_options(None, Some("test-api-key".to_string()), 5);
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -228,7 +284,7 @@ mod tests {
 
     #[test]
     fn test_config_from_options_missing_api_key() {
-        let result = Config::from_options(Some("AA100".to_string()), None);
+        let result = Config::from_options(Some("AA100".to_string()), None, 5);
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -239,7 +295,7 @@ mod tests {
 
     #[test]
     fn test_config_from_options_missing_both() {
-        let result = Config::from_options(None, None);
+        let result = Config::from_options(None, None, 5);
 
         assert!(result.is_err());
         match result.unwrap_err() {
