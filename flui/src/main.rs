@@ -48,7 +48,7 @@ struct CliArgs {
     #[clap(long, env = "FLIGHTAWARE_API_KEY")]
     api_key: Option<String>,
 
-    #[clap(long, env = "REFRESH_INTERVAL", default_value = "5")]
+    #[clap(long, env = "REFRESH_INTERVAL", default_value = "180")]
     refresh_interval: u64,
 }
 
