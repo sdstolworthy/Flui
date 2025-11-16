@@ -1,4 +1,5 @@
 use clap::Parser;
+use flightaware::Client;
 use std::fmt;
 
 #[derive(Debug)]
@@ -58,24 +59,23 @@ impl Config {
             flight_aware_api_key,
         })
     }
-}
 
-pub enum FlightStatus {
-    Delayed(i32),
-    Cancelled,
-    OnTime,
-}
-
-pub enum FlightProgress {
-    Scheduled,
-    Taxiing,
-}
-struct FlightTracker {
-    flight_identifier: String,
-}
-impl FlightTracker {
-    pub fn new(flight_identifier: String) -> Self {
-        Self { flight_identifier }
+    pub fn create_client(&self) -> Client {
+        Client::new_with_client(
+            "https://aeroapi.flightaware.com/aeroapi",
+            reqwest::Client::builder()
+                .default_headers({
+                    let mut headers = reqwest::header::HeaderMap::new();
+                    headers.insert(
+                        "x-apikey",
+                        reqwest::header::HeaderValue::from_str(&self.flight_aware_api_key)
+                            .expect("Invalid API key"),
+                    );
+                    headers
+                })
+                .build()
+                .expect("Failed to build HTTP client"),
+        )
     }
 }
 
@@ -86,8 +86,13 @@ fn get_config() -> Result<Config, ConfigurationError> {
 
 fn main() {
     let config = get_config().unwrap();
-    let flight_follower = FlightTracker::new(config.flight_number.clone());
-    println!("Tracking flight: {}", flight_follower.flight_identifier);
+    let _client = config.create_client();
+    
+    println!("Tracking flight: {}", config.flight_number);
+    println!("FlightAware API client initialized");
+    
+    // In the future, we'll use the client to fetch flight data
+    // For now, just show that we have the SDK integrated
 }
 
 #[cfg(test)]
