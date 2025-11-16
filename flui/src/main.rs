@@ -3,7 +3,7 @@ use flightaware::Client;
 use std::fmt;
 
 mod flight_status;
-use flight_status::{FlightStatus, FlightStatusViewModel, FlightStatusViewModelBuilder};
+use flight_status::{FlightStatusViewModel, FlightStatusViewModelBuilder};
 
 mod api_converter;
 mod ui;
@@ -104,7 +104,7 @@ fn get_config() -> Result<Config, ConfigurationError> {
 fn select_relevant_flight(
     flights: &[flightaware::types::GetFlightResponseFlightsItem],
 ) -> Option<&flightaware::types::GetFlightResponseFlightsItem> {
-    use chrono::{DateTime, Utc};
+    use chrono::Utc;
 
     if flights.is_empty() {
         return None;
@@ -191,8 +191,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .get_flight(&flight_number, None, None, None, None, None)
                     .await;
 
-                if let Ok(response) = flight_status {
-                    if let Some(flight) = select_relevant_flight(&response.flights) {
+                if let Ok(response) = flight_status
+                    && let Some(flight) = select_relevant_flight(&response.flights) {
                         let view_model = FlightStatusViewModel::from(flight);
                         let mut builder = FlightStatusViewModelBuilder::from(view_model);
                         builder.progress_percent(Some((i * 10) as i64)); // simulate progress
@@ -203,7 +203,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             break;
                         }
                     }
-                }
             }
         }
     });
@@ -228,13 +227,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         })?;
 
         // Check for updates or user input (with timeout)
-        if event::poll(std::time::Duration::from_millis(100))? {
-            if let Event::Key(key) = event::read()? {
-                if key.code == KeyCode::Char('q') || key.code == KeyCode::Esc {
+        if event::poll(std::time::Duration::from_millis(100))?
+            && let Event::Key(key) = event::read()?
+                && (key.code == KeyCode::Char('q') || key.code == KeyCode::Esc) {
                     break;
                 }
-            }
-        }
 
         // Check for flight updates (non-blocking)
         if let Ok(updated_view_model) = rx.try_recv() {

@@ -51,17 +51,15 @@ fn determine_flight_status_base(flight: &flightaware::types::BaseFlight) -> Flig
         return FlightStatus::EnRoute;
     }
     
-    if let Some(delay) = flight.departure_delay {
-        if delay > 0 {
+    if let Some(delay) = flight.departure_delay
+        && delay > 0 {
             return FlightStatus::Delayed;
         }
-    }
     
-    if let Some(delay) = flight.arrival_delay {
-        if delay > 0 {
+    if let Some(delay) = flight.arrival_delay
+        && delay > 0 {
             return FlightStatus::Delayed;
         }
-    }
     
     FlightStatus::OnTime
 }
@@ -75,17 +73,15 @@ fn determine_flight_status_response_item(flight: &flightaware::types::GetFlightR
         return FlightStatus::EnRoute;
     }
     
-    if let Some(delay) = flight.departure_delay {
-        if delay > 0 {
+    if let Some(delay) = flight.departure_delay
+        && delay > 0 {
             return FlightStatus::Delayed;
         }
-    }
     
-    if let Some(delay) = flight.arrival_delay {
-        if delay > 0 {
+    if let Some(delay) = flight.arrival_delay
+        && delay > 0 {
             return FlightStatus::Delayed;
         }
-    }
     
     FlightStatus::OnTime
 }
